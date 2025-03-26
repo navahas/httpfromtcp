@@ -1,19 +1,37 @@
 use std::env;
-use std::fs;
+use std::fs::File;
+use std::io::{self, BufReader, Read};
+use std::str;
 
-fn main() {
+fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
-
     let file_path = &args[1];
-    let message_content = fs::read(file_path)
-        .expect("Failed to read file");
 
-    println!("Total bytes: {}", message_content.len());
+    let file = match File::open(file_path) {
+        Ok(file) => file,
+        Err(err) => {
+            eprintln!("Failed to open {}: {}", file_path, err);
+            return Err(err);
+        }
+    };
 
-    for chunk in message_content.chunks(8) {
-        let text = std::str::from_utf8(chunk).unwrap_or("Invalid utf-8");
-        println!("read: {}", text);
+    let mut reader = BufReader::new(file);
+
+    let mut buffer = [0u8; 8];
+
+    loop {
+        let bytes_read = reader.read(&mut buffer)?;
+        if bytes_read == 0 {
+            break;
+        }
+
+        let slice = &buffer[..bytes_read];
+
+        match str::from_utf8(slice) {
+            Ok(text) => println!("read: {}", text),
+            Err(_) => println!("read (invalid UTF-8): {:?}", slice),
+        }
     }
 
-    // println!("{:?}", message_content);
+    Ok(())
 }
