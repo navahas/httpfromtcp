@@ -5,6 +5,7 @@ use std::str;
 
 fn stream_reader(reader: &mut BufReader<File>) -> io::Result<()> {
     let mut buffer = [0u8; 8];
+    let mut current_line = String::new();
 
     loop {
         let bytes_read = reader.read(&mut buffer)?;
@@ -15,9 +16,24 @@ fn stream_reader(reader: &mut BufReader<File>) -> io::Result<()> {
         let slice = &buffer[..bytes_read];
 
         match str::from_utf8(slice) {
-            Ok(text) => println!("read: {}", text),
-            Err(_) => println!("read (invalid UTF-8): {:?}", slice),
+            Ok(text) => {
+                let parts: Vec<&str> = text.split('\n').collect();
+
+                for i in 0..(parts.len() - 1) {
+                    current_line.push_str(parts[i]);
+                    println!("read: {}", current_line);
+                    current_line.clear();
+                }
+                current_line.push_str(parts[parts.len() - 1]);
+            }
+            Err(_) => {
+                println!("read (invalid UTF-8): {:?}", slice);
+            }
         }
+    }
+
+    if !current_line.is_empty() {
+        println!("read: {}", current_line);
     }
 
     Ok(())
