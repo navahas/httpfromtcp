@@ -1,14 +1,16 @@
-use std::fs::File;
 use std::io::{self, BufReader, Read};
+use std::net::{TcpListener, TcpStream};
 use std::str;
 use std::sync::mpsc::{self, Receiver};
 use std::thread;
 
-fn get_lines_channel(file: File) -> Receiver<String> {
+const TCP_PORT: u16 = 42069;
+
+fn get_lines_channel(stream: TcpStream) -> Receiver<String> {
     let (tx, rx) = mpsc::channel::<String>();
 
     thread::spawn(move || {
-        let mut reader = BufReader::new(file);
+        let mut reader = BufReader::new(stream);
         let mut buffer = [0u8; 8];
         let mut current_line = String::new();
 
@@ -16,7 +18,7 @@ fn get_lines_channel(file: File) -> Receiver<String> {
             let bytes_read = match reader.read(&mut buffer) {
                 Ok(n) => n,
                 Err(e) => {
-                    eprintln!("Error reading: {}", e);
+                    eprintln!("Error reading from client: {}", e);
                     break;
                 }
             };
@@ -31,7 +33,7 @@ fn get_lines_channel(file: File) -> Receiver<String> {
                 Ok(text) => text,
                 Err(_) => {
                     eprintln!("Invalid UTF-8 chunk: {:?}", slice);
-                    continue; 
+                    continue;
                 }
             };
 
@@ -39,9 +41,8 @@ fn get_lines_channel(file: File) -> Receiver<String> {
 
             for i in 0..(parts.len() - 1) {
                 current_line.push_str(parts[i]);
-                if let Err(e) = tx.send(current_line.clone()) {
-                    eprintln!("Error sending line: {}", e);
-                    return; // If the receiver is gone, we stop.
+                if tx.send(current_line.clone()).is_err() {
+                    return; 
                 }
                 current_line.clear();
             }
@@ -57,14 +58,20 @@ fn get_lines_channel(file: File) -> Receiver<String> {
 }
 
 fn main() -> io::Result<()> {
-    let path = std::env::args().nth(1).expect("Usage: <program> <file_path>");
+    let address = format!("127.0.0.1:{}", TCP_PORT);
+    let listener = TcpListener::bind(&address)?;
+    println!("Listening on 127.0.0.1:{}...", TCP_PORT);
 
-    let file = File::open(path)?;
+    for incoming in listener.incoming() {
+        let stream = incoming?;
 
-    let line_receiver = get_lines_channel(file);
-
-    for line in line_receiver {
-        println!("read: {}", line);
+        thread::spawn(move || {
+            let line_rx = get_lines_channel(stream);
+            for line in line_rx {
+                println!("read: {}", line);
+            }
+            println!("Client disconnected.\n");
+        });
     }
 
     Ok(())
