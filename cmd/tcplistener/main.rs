@@ -1,5 +1,5 @@
-use httpfromtcp::server;
+use httpfromtcp::tcp;
 
 fn main() -> std::io::Result<()> {
-    server::run_server()
+    tcp::run_server()
 }

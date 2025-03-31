@@ -7,4 +7,8 @@ edition = "2021"
 name = "tcplistener"
 path = "cmd/tcplistener/main.rs"
 
+[[bin]]
+name = "udpsender"
+path = "cmd/udpsender/main.rs"
+
 [dependencies]
