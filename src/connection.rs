@@ -1,12 +1,10 @@
-use std::io::{self, BufReader, Read};
-use std::net::{TcpListener, TcpStream};
+use std::io::{BufReader, Read};
+use std::net::TcpStream;
 use std::str;
 use std::sync::mpsc::{self, Receiver};
 use std::thread;
 
-const TCP_PORT: u16 = 42069;
-
-fn get_lines_channel(stream: TcpStream) -> Receiver<String> {
+pub fn get_lines_channel(stream: TcpStream) -> Receiver<String> {
     let (tx, rx) = mpsc::channel::<String>();
 
     thread::spawn(move || {
@@ -55,24 +53,4 @@ fn get_lines_channel(stream: TcpStream) -> Receiver<String> {
         }
     });
     rx
-}
-
-fn main() -> io::Result<()> {
-    let address = format!("127.0.0.1:{}", TCP_PORT);
-    let listener = TcpListener::bind(&address)?;
-    println!("Listening on 127.0.0.1:{}...", TCP_PORT);
-
-    for incoming in listener.incoming() {
-        let stream = incoming?;
-
-        thread::spawn(move || {
-            let line_rx = get_lines_channel(stream);
-            for line in line_rx {
-                println!("read: {}", line);
-            }
-            println!("Client disconnected.\n");
-        });
-    }
-
-    Ok(())
 }

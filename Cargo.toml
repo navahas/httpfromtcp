@@ -3,4 +3,8 @@ name = "httpfromtcp"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "tcplistener"
+path = "cmd/tcplistener/main.rs"
+
 [dependencies]
